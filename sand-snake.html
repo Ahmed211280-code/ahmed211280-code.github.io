@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
+<title>SAND SNAKE | Lemoo Games</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;600;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --sand-1:#F2D9AE;
+    --sand-2:#D9A45E;
+    --clay:#C4633F;
+    --moss:#4A6B4A;
+    --moss-dark:#334A34;
+    --ink:#2B241B;
+    --cream:#FBF3E4;
+    --night:#1B1B3F;
+  }
+  *{box-sizing:border-box;}
+  html,body{
+    margin:0; height:100%;
+    background:var(--ink);
+    font-family:'Rubik',sans-serif;
+    overflow:hidden;
+    -webkit-tap-highlight-color:transparent;
+    user-select:none;
+  }
+  #stage{
+    position:relative; width:100vw; height:100vh;
+    display:flex; align-items:center; justify-content:center;
+  }
+  #frame{
+    position:relative;
+    width:min(92vw, 520px);
+    aspect-ratio: 1/1.14;
+    border-radius:18px;
+    overflow:hidden;
+    box-shadow: 0 30px 60px -20px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.06);
+    background:linear-gradient(180deg,#3a2f22,#241c15);
+  }
+  canvas{ display:block; width:100%; height:100%; }
+  .hud{
+    position:absolute; top:14px; left:0; right:0;
+    display:flex; justify-content:space-between; padding:0 18px;
+    pointer-events:none; font-family:'Space Mono', monospace;
+  }
+  .hud .label{ font-size:10.5px; letter-spacing:1px; color:rgba(251,243,228,0.6); }
+  .hud .value{ font-size:20px; font-weight:700; color:var(--cream); text-shadow:0 2px 6px rgba(0,0,0,0.35); }
+  .hud .best{ text-align:left; }
+  .hud .score{ text-align:right; }
+
+  #homeBtn{
+    position:absolute; bottom:14px; right:14px; z-index:6;
+    background:rgba(20,16,20,0.55); border:1px solid rgba(251,243,228,0.25);
+    color:var(--cream); height:34px; padding:0 14px; border-radius:17px;
+    font-family:'Rubik',sans-serif; font-size:12px; font-weight:600;
+    text-decoration:none; display:flex; align-items:center; gap:5px;
+    backdrop-filter:blur(3px);
+  }
+  #muteBtn{
+    position:absolute; bottom:14px; left:14px; z-index:6;
+    background:rgba(20,16,20,0.55); border:1px solid rgba(251,243,228,0.25);
+    color:var(--cream); width:34px; height:34px; border-radius:50%;
+    font-size:15px; cursor:pointer; display:flex; align-items:center; justify-content:center;
+    backdrop-filter:blur(3px);
+  }
+
+  #overlay{
+    position:absolute; inset:0; display:flex; flex-direction:column;
+    align-items:center; justify-content:center; gap:14px; text-align:center;
+    background:radial-gradient(ellipse at center, rgba(15,12,20,0.5), rgba(10,8,14,0.82));
+    backdrop-filter: blur(3px);
+    transition:opacity 0.25s ease; padding:20px;
+  }
+  #overlay.hidden{ opacity:0; pointer-events:none; }
+  .card{
+    background:linear-gradient(180deg, rgba(24,18,26,0.92), rgba(14,10,16,0.95));
+    border:1px solid rgba(251,243,228,0.14);
+    border-radius:20px; padding:22px 26px 20px; max-width:340px; width:100%;
+    box-shadow:0 25px 50px -15px rgba(0,0,0,0.6);
+    display:flex; flex-direction:column; align-items:center; gap:11px;
+  }
+  .stat-row{
+    display:flex; justify-content:space-between; width:100%;
+    font-family:'Space Mono', monospace; font-size:11px;
+    color:rgba(251,243,228,0.55); padding-bottom:10px;
+    border-bottom:1px dashed rgba(251,243,228,0.15);
+  }
+  .stat-row b{ color:var(--sand-1); font-size:12px; }
+  .card h1{
+    margin:0; font-size:clamp(18px,4vw,22px); font-weight:800;
+    color:var(--cream); text-shadow:0 3px 10px rgba(0,0,0,0.4); line-height:1.5;
+  }
+  .card p{
+    margin:0; font-size:13px; color:rgba(251,243,228,0.8);
+    max-width:280px; line-height:1.7;
+  }
+  .kbd{
+    font-family:'Space Mono', monospace; background:rgba(251,243,228,0.15);
+    border:1px solid rgba(251,243,228,0.35); border-radius:6px;
+    padding:2px 7px; font-size:11.5px;
+  }
+  #gameoverStats{ display:flex; gap:22px; }
+  #gameoverStats div{ text-align:center; }
+  #gameoverStats .n{ font-family:'Space Mono', monospace; font-size:20px; font-weight:700; color:var(--cream); }
+  #gameoverStats .l{ font-size:10px; letter-spacing:1px; color:rgba(251,243,228,0.6); }
+  #playBtn{
+    margin-top:4px;
+    background:linear-gradient(180deg, #6FCF7A, #3F9E52);
+    color:#0E2410; border:none; padding:12px 30px; border-radius:999px;
+    font-family:'Rubik',sans-serif; font-weight:700; font-size:14.5px;
+    cursor:pointer; box-shadow:0 10px 26px -8px rgba(63,158,82,0.7);
+    animation:pulseBtn 2.2s ease-in-out infinite;
+  }
+  #playBtn:active{ transform:scale(0.96); }
+  @keyframes pulseBtn{
+    0%,100%{ box-shadow:0 10px 26px -8px rgba(63,158,82,0.7), 0 0 0 0 rgba(111,207,122,0.45); }
+    50%{ box-shadow:0 10px 26px -8px rgba(63,158,82,0.85), 0 0 0 10px rgba(111,207,122,0); }
+  }
+  .dpad{
+    position:absolute; bottom:60px; left:50%; transform:translateX(-50%);
+    display:grid; grid-template-columns:44px 44px 44px; grid-template-rows:44px 44px 44px;
+    gap:4px; z-index:6; opacity:0.85;
+  }
+  .dpad button{
+    background:rgba(20,16,20,0.5); border:1px solid rgba(251,243,228,0.25);
+    color:var(--cream); border-radius:10px; font-size:16px;
+  }
+  .dpad button:active{ background:rgba(196,99,63,0.5); }
+  @media (min-width:640px){ .dpad{ display:none; } }
+</style>
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9454169755690880" crossorigin="anonymous"></script>
+</head>
+<body>
+<div id="stage">
+  <div id="frame">
+    <canvas id="c"></canvas>
+    <div class="hud">
+      <div class="best"><div class="label">أفضل نتيجة</div><div class="value" id="bestVal">0</div></div>
+      <div class="score"><div class="label">النتيجة</div><div class="value" id="scoreVal">0</div></div>
+    </div>
+    <button id="muteBtn" aria-label="كتم الصوت">🔊</button>
+    <a id="homeBtn" href="index.html">🏠 الرئيسية</a>
+
+    <div class="dpad" id="dpad">
+      <span></span><button data-dir="up">▲</button><span></span>
+      <button data-dir="left">◀</button><span></span><button data-dir="right">▶</button>
+      <span></span><button data-dir="down">▼</button><span></span>
+    </div>
+
+    <div id="overlay">
+      <div class="card">
+        <div class="stat-row">
+          <span>أفضل نتيجة: <b id="cardBest">0</b></span>
+          <span>الوضع: <b>كلاسيكي</b></span>
+        </div>
+        <h1 id="overlayTitle">🐍 مرحباً بك في SAND SNAKE</h1>
+        <p id="overlayText">حرّك الثعبان بالأسهم أو <span class="kbd">WASD</span> أو اسحب على الشاشة. كُل الصبارة الحمراء عشان تكبر، وابعد عن الحواف وعن جسمك!</p>
+        <div id="gameoverStats" style="display:none;">
+          <div><div class="n" id="finalScore">0</div><div class="l">النتيجة</div></div>
+          <div><div class="n" id="finalBest">0</div><div class="l">الأفضل</div></div>
+        </div>
+        <button id="playBtn">ابدأ اللعب 🚀</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  const canvas = document.getElementById('c');
+  const ctx = canvas.getContext('2d');
+  const overlay = document.getElementById('overlay');
+  const overlayTitle = document.getElementById('overlayTitle');
+  const overlayText = document.getElementById('overlayText');
+  const playBtn = document.getElementById('playBtn');
+  const scoreVal = document.getElementById('scoreVal');
+  const bestVal = document.getElementById('bestVal');
+  const cardBest = document.getElementById('cardBest');
+  const gameoverStats = document.getElementById('gameoverStats');
+  const finalScoreEl = document.getElementById('finalScore');
+  const finalBestEl = document.getElementById('finalBest');
+
+  const GRID = 20;
+  const CELL = 20;
+  const SIZE = GRID*CELL; // 400
+  let dpr = Math.min(window.devicePixelRatio||1, 2);
+
+  function resize(){
+    dpr = Math.min(window.devicePixelRatio||1, 2);
+    canvas.width = SIZE*dpr;
+    canvas.height = SIZE*dpr;
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+  }
+  window.addEventListener('resize', resize);
+  resize();
+
+  // ---------- sound (Web Audio API) ----------
+  let audioCtx = null, muted = false;
+  function ensureAudio(){
+    if(!audioCtx){ try{ audioCtx = new (window.AudioContext||window.webkitAudioContext)(); }catch(e){} }
+    if(audioCtx && audioCtx.state==='suspended'){ audioCtx.resume(); }
+  }
+  function tone(freq, dur, opts){
+    if(muted || !audioCtx) return;
+    opts = opts||{};
+    const now = audioCtx.currentTime;
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = opts.type||'sine';
+    osc.frequency.setValueAtTime(freq, now);
+    if(opts.slideTo!=null) osc.frequency.exponentialRampToValueAtTime(Math.max(1,opts.slideTo), now+dur);
+    gain.gain.setValueAtTime(opts.gain!=null?opts.gain:0.16, now);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now+dur);
+    osc.connect(gain); gain.connect(audioCtx.destination);
+    osc.start(now); osc.stop(now+dur+0.02);
+  }
+  const sfx = {
+    eat(){ tone(500,0.09,{type:'square',slideTo:800,gain:0.14}); },
+    hit(){ tone(160,0.35,{type:'sawtooth',slideTo:40,gain:0.22}); },
+    click(){ tone(300,0.07,{gain:0.1}); }
+  };
+  document.getElementById('muteBtn').addEventListener('click', function(){
+    muted = !muted; this.textContent = muted?'🔇':'🔊';
+  });
+
+  // ---------- persistent high score ----------
+  let bestScore = 0;
+  const STORAGE_KEY = 'sand-snake-best-score';
+  async function loadBest(){
+    try{
+      if(window.storage){
+        const r = await window.storage.get(STORAGE_KEY, false);
+        if(r && r.value){ bestScore = parseInt(r.value,10)||0; }
+      }
+    }catch(e){}
+    bestVal.textContent = bestScore; cardBest.textContent = bestScore;
+  }
+  async function saveBest(){
+    try{ if(window.storage){ await window.storage.set(STORAGE_KEY, String(bestScore), false); } }catch(e){}
+  }
+  loadBest();
+
+  // ---------- game state ----------
+  let state = 'ready'; // ready | playing | over
+  let snake, dir, nextDir, food, score, stepInterval, stepTimer;
+  const BASE_INTERVAL = 0.16;
+
+  function resetGame(){
+    const mid = Math.floor(GRID/2);
+    snake = [ {x:mid-1,y:mid}, {x:mid-2,y:mid}, {x:mid-3,y:mid} ];
+    dir = {x:1,y:0}; nextDir = {x:1,y:0};
+    score = 0; stepInterval = BASE_INTERVAL; stepTimer = 0;
+    placeFood();
+    scoreVal.textContent = '0';
+  }
+
+  function placeFood(){
+    let tries = 0;
+    while(tries < 200){
+      const fx = Math.floor(Math.random()*GRID), fy = Math.floor(Math.random()*GRID);
+      if(!snake.some(s=>s.x===fx && s.y===fy)){ food = {x:fx,y:fy}; return; }
+      tries++;
+    }
+    food = {x:0,y:0};
+  }
+
+  function setDir(nx, ny){
+    // prevent reversing directly into itself
+    if(nx === -dir.x && ny === -dir.y) return;
+    nextDir = {x:nx,y:ny};
+  }
+
+  window.addEventListener('keydown', (e)=>{
+    const map = {
+      ArrowUp:[0,-1], ArrowDown:[0,1], ArrowLeft:[-1,0], ArrowRight:[1,0],
+      w:[0,-1], s:[0,1], a:[-1,0], d:[1,0], W:[0,-1], S:[0,1], A:[-1,0], D:[1,0]
+    };
+    if(map[e.key]){
+      e.preventDefault();
+      if(state==='ready'){ ensureAudio(); startGame(); }
+      setDir(map[e.key][0], map[e.key][1]);
+    } else if(e.code==='Space' && state==='ready'){
+      ensureAudio(); startGame();
+    }
+  });
+
+  document.getElementById('dpad').addEventListener('click', (e)=>{
+    const btn = e.target.closest('button');
+    if(!btn) return;
+    if(state==='ready'){ ensureAudio(); startGame(); }
+    const d = btn.dataset.dir;
+    if(d==='up') setDir(0,-1);
+    else if(d==='down') setDir(0,1);
+    else if(d==='left') setDir(-1,0);
+    else if(d==='right') setDir(1,0);
+  });
+
+  // swipe controls
+  let touchStart = null;
+  canvas.addEventListener('touchstart', (e)=>{
+    touchStart = { x:e.touches[0].clientX, y:e.touches[0].clientY };
+    if(state==='ready'){ ensureAudio(); startGame(); }
+  }, {passive:true});
+  canvas.addEventListener('touchend', (e)=>{
+    if(!touchStart) return;
+    const dx = e.changedTouches[0].clientX - touchStart.x;
+    const dy = e.changedTouches[0].clientY - touchStart.y;
+    if(Math.abs(dx) > Math.abs(dy)){
+      if(Math.abs(dx) > 20) setDir(dx>0?1:-1, 0);
+    } else {
+      if(Math.abs(dy) > 20) setDir(0, dy>0?1:-1);
+    }
+    touchStart = null;
+  }, {passive:true});
+
+  function startGame(){
+    state = 'playing';
+    resetGame();
+    overlay.classList.add('hidden');
+    gameoverStats.style.display = 'none';
+  }
+
+  async function endGame(){
+    state = 'over';
+    sfx.hit();
+    if(score > bestScore){ bestScore = score; bestVal.textContent = bestScore; cardBest.textContent = bestScore; saveBest(); }
+    finalScoreEl.textContent = score;
+    finalBestEl.textContent = bestScore;
+    overlayTitle.textContent = 'اتلخبطت! 🌵';
+    overlayText.style.display = 'none';
+    gameoverStats.style.display = 'flex';
+    playBtn.textContent = 'حاول تاني';
+    overlay.classList.remove('hidden');
+  }
+
+  playBtn.addEventListener('click', ()=>{
+    ensureAudio(); sfx.click();
+    overlayTitle.textContent = '🐍 مرحباً بك في SAND SNAKE';
+    overlayText.style.display = 'block';
+    startGame();
+  });
+
+  function update(dt){
+    stepTimer += dt;
+    if(stepTimer < stepInterval) return;
+    stepTimer = 0;
+
+    dir = nextDir;
+    const head = snake[0];
+    const nx = head.x + dir.x, ny = head.y + dir.y;
+
+    if(nx < 0 || nx >= GRID || ny < 0 || ny >= GRID){ endGame(); return; }
+    if(snake.some(s => s.x===nx && s.y===ny)){ endGame(); return; }
+
+    snake.unshift({x:nx, y:ny});
+    if(nx === food.x && ny === food.y){
+      score += 10;
+      scoreVal.textContent = score;
+      sfx.eat();
+      placeFood();
+      stepInterval = Math.max(0.07, BASE_INTERVAL - score*0.0015);
+    } else {
+      snake.pop();
+    }
+  }
+
+  function roundRect(x,y,w,h,r){
+    ctx.beginPath();
+    ctx.moveTo(x+r,y);
+    ctx.arcTo(x+w,y,x+w,y+h,r);
+    ctx.arcTo(x+w,y+h,x,y+h,r);
+    ctx.arcTo(x,y+h,x,y,r);
+    ctx.arcTo(x,y,x+w,y,r);
+    ctx.closePath();
+  }
+
+  function draw(){
+    // background checker (sand dunes texture)
+    for(let y=0;y<GRID;y++){
+      for(let x=0;x<GRID;x++){
+        ctx.fillStyle = (x+y)%2===0 ? '#DFC088' : '#D2AF74';
+        ctx.fillRect(x*CELL, y*CELL, CELL, CELL);
+      }
+    }
+    // border vignette
+    ctx.strokeStyle = 'rgba(43,36,27,0.25)';
+    ctx.lineWidth = 6;
+    ctx.strokeRect(3,3,SIZE-6,SIZE-6);
+
+    // food (cactus-red)
+    ctx.fillStyle = '#C4633F';
+    roundRect(food.x*CELL+3, food.y*CELL+3, CELL-6, CELL-6, 5);
+    ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.35)';
+    ctx.beginPath(); ctx.arc(food.x*CELL+CELL*0.35, food.y*CELL+CELL*0.35, 2.4, 0, Math.PI*2); ctx.fill();
+
+    // snake
+    snake.forEach((s,i)=>{
+      const isHead = i===0;
+      ctx.fillStyle = isHead ? '#4A6B4A' : (i%2===0 ? '#3F5C3D' : '#334A34');
+      roundRect(s.x*CELL+2, s.y*CELL+2, CELL-4, CELL-4, isHead?7:5);
+      ctx.fill();
+      if(isHead){
+        ctx.fillStyle = '#1B1B1B';
+        const ex = s.x*CELL + CELL/2 + dir.x*4;
+        const ey = s.y*CELL + CELL/2 + dir.y*4;
+        ctx.beginPath(); ctx.arc(ex-3, ey-3, 1.8, 0, Math.PI*2); ctx.fill();
+        ctx.beginPath(); ctx.arc(ex+3, ey+3, 1.8, 0, Math.PI*2); ctx.fill();
+      }
+    });
+  }
+
+  let lastTime = performance.now();
+  function frame(now){
+    const dt = Math.min((now-lastTime)/1000, 0.05);
+    lastTime = now;
+    if(state === 'playing') update(dt);
+    draw();
+    requestAnimationFrame(frame);
+  }
+  resetGame();
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
